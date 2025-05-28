@@ -1,0 +1,25 @@
+# Nutzt Windows als Build-Umgebung
+image: Visual Studio 2022
+
+#macos-latest
+#Visual Studio 2022
+
+# Node.js Version festlegen
+environment:
+  nodejs_version: "18"
+
+# Vor dem Build ausführen:
+install:  
+  - ps: Install-Product node $env:nodejs_version           #- brew install node@18 mac   win   - ps: Install-Product node $env:nodejs_version
+  - npm install
+  - npm install -g electron-builder
+
+# Der eigentliche Build-Prozess
+build_script:
+  - npm run build
+  - electron-builder --win   #--mac           --win
+
+# Artefakte speichern (die fertige EXE-Datei)
+artifacts:
+  - path: dist/*.exe  #dmg              exe
+    name: ElectronApp2
