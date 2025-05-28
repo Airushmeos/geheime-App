@@ -119,11 +119,10 @@ app.whenReady().then(() => {
         app.quit();
         return;
     }
-    loadOrDownloadHTML(() => {
+   // loadOrDownloadHTML(() => {
         // createWindowftp();
-        Windows();
-    });
-
+   // });
+    Windows();
     Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
     // 🎯 Tray aktivieren
