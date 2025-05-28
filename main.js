@@ -3,33 +3,26 @@ const path = require("path");
 const fs = require("fs");
 const https = require("https");
 
-let ftpWindow, appWindow, streamWindow, kiWindow, emailWindow, massagerWindow, loginWindow, massageWindow, ftp2Window;
+let ftpWindow, mainWindow;
 let tray = null;
 
-const userDataPath = app.getPath("userData");
-const htmlSavePath = path.join(userDataPath, "login.html");
-const htmlDownloadUrl = "https://myfirstwebsite.lima-city.at/passwort/login.html";
 
-// 🧩 Funktion zum Herunterladen und Speichern von HTML
-function loadOrDownloadHTML(callback) {
-    if (fs.existsSync(htmlSavePath)) {
-        console.log("📂 Lokale HTML-Datei gefunden.");
-        callback();
-    } else {
-        console.log("🌐 HTML wird heruntergeladen...");
-        https.get(htmlDownloadUrl, res => {
-            let data = "";
-            res.on("data", chunk => data += chunk);
-            res.on("end", () => {
-                fs.writeFileSync(htmlSavePath, data);
-                console.log("✅ HTML gespeichert unter:", htmlSavePath);
-                callback();
-            });
-        }).on("error", err => {
-            console.error("❌ Fehler beim Download:", err.message);
-            callback(); // Trotzdem App starten
-        });
+const statusPath = path.join(app.getPath('userData'), 'app_status.json');
+
+// Funktion zum Status-Prüfen
+function isAppLocked() {
+    try {
+        const data = fs.readFileSync(statusPath);
+        const json = JSON.parse(data);
+        return json.locked === true;
+    } catch (err) {
+        return false; // Falls Datei nicht existiert oder fehlerhaft ist
     }
+}
+
+// Funktion zum Status-Speichern
+function saveAppClosedFlag() {
+    fs.writeFileSync(statusPath, JSON.stringify({ locked: true }));
 }
 
 // 📌 Funktion zum Erstellen eines Fensters
@@ -55,41 +48,32 @@ function createWindow(url, refVar, title) {
     return newWin;
 }
 
-// 🧠 Fenster Funktionen
-function createWindowapp() {
-    appWindow = createWindow("https://myfirstwebsite.lima-city.at/app", appWindow, "App");
-}
-
-function createWindowftp() {
-    ftpWindow = createWindow("https://myfirstwebsite.lima-city.at/ftp", ftpWindow, "FTP");
-}
-
-function createWindowStream() {
-    streamWindow = createWindow("https://myfirstwebsite.lima-city.at/stream", streamWindow, "Stream");
-}
-
-function createWindowKI() {
-    kiWindow = createWindow("https://myfirstwebsite.lima-city.at/KI/%C3%B6ffentlich.html", kiWindow, "KI");
-}
-
-function createWindowemail() {
-    emailWindow = createWindow("https://myfirstwebsite.lima-city.at/email/", emailWindow, "E-Mail");
-}
-
-function createWindowmassager() {
-    massagerWindow = createWindow("https://myfirstwebsite.lima-city.at/chat/", massagerWindow, "Chat");
-}
-
-function createWindowlogin() {
-    loginWindow = createWindow("https://myfirstwebsite.lima-city.at/passwort/login.html", loginWindow, "Login");
-}
-
-function createWindowmassages() {
-    massageWindow = createWindow("https://myfirstwebsite.lima-city.at/passwort/massages.html", massageWindow, "Massages");
-}
-
 function createWindowftp2() {
     massageWindow = createWindow("https://myfirstwebsite.lima-city.at/ftp2", ftp2Window, "FTP2");
+}
+
+function Windows() {
+    mainWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+        }
+    });
+
+    mainWindow.loadURL('https://example.com');
+    // Wenn App in den Hintergrund geht:
+    mainWindow.on('blur', () => {
+        console.log('🔒 App wird blockiert und geschlossen.');
+        saveAppClosedFlag(); // Flag setzen
+        app.quit();          // App sofort beenden
+    });
+}
+
+function zurücksetzen() {
+    fs.writeFileSync(statusPath, JSON.stringify({ locked: false }));
+    sendNotification('Es wurde Zurückgesetzt.');
 }
 
 // 🧠 Mitteilung senden
@@ -97,7 +81,7 @@ function sendNotification(body) {
     const iconPath = path.join(__dirname, 'icon.png'); // Stelle sicher, dass das Icon im gleichen Verzeichnis wie dein main.js liegt
 
     new Notification({
-        title: "Meine App2",
+        title: "Meine App3",
         body: body,
         icon: iconPath,  // Das Icon für die Benachrichtigung
     }).show();
@@ -121,30 +105,30 @@ const menuTemplate = [
     {
         label: "Seiten",
         submenu: [
-            { label: "App", click: createWindowapp },
-            { label: "FTP", click: createWindowftp },
-            { label: "Stream", click: createWindowStream },
-            { label: "KI", click: createWindowKI },
-            { label: "E-Mail", click: createWindowemail },
-            { label: "Chat", click: createWindowmassager },
-            { label: "Login", click: createWindowlogin },
-            { label: "Massages", click: createWindowmassages },
-            { label: "FTP2", click: createWindowftp2 }
+            //{ label: "FTP2", click: createWindowftp2 },
+            { label: "Seite", click: Windows },
+            { label: "Zurücksetzen", click: zurücksetzen },
         ],
     },
 ];
 
 // 🚀 App starten
 app.whenReady().then(() => {
+    if (isAppLocked()) {
+        console.log('🚫 App wurde vorher geschlossen – darf nicht mehr geöffnet werden!');
+        app.quit();
+        return;
+    }
     loadOrDownloadHTML(() => {
-        createWindowftp();
+        // createWindowftp();
+        Windows();
     });
 
     Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
     // 🎯 Tray aktivieren
     tray = new Tray(path.join(__dirname, "icon.png")); // PNG oder ICO verwenden
-    tray.setToolTip("Meine App2");
+    tray.setToolTip("Meine App3");
     tray.setContextMenu(
         Menu.buildFromTemplate([
             { label: "Öffne App", click: createWindowftp },
@@ -152,10 +136,10 @@ app.whenReady().then(() => {
         ])
     );
 
-    // 📣 Alle 5 Minuten Notification senden
-    setInterval(() => {
-        sendNotification("App läuft im Hintergrund!");
-    }, 1 * 60 * 1000); // 1 Minute
+    // // 📣 Alle 5 Minuten Notification senden
+    // setInterval(() => {
+    //     sendNotification("App läuft im Hintergrund!");
+    // }, 1 * 60 * 1000); // 1 Minute
 });
 
 // 🧼 App beenden verhindern, wenn Fenster geschlossen wird
@@ -171,5 +155,5 @@ app.on("activate", () => {
 
 // ipcMain Listener für Benachrichtigungen
 ipcMain.on('send-notification', (event, body) => {
-  sendNotification(body);
+    sendNotification(body);
 });
