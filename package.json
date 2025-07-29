@@ -1,19 +1,20 @@
 {
   "name": "meine_app3",
-  "version": "1.1.0",
+  "version": "1.0.2",
   "description": "Meine geheime App.",
   "main": "main.js",
-  "scripts": {
-    "start": "electron .",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
-  },
   "author": {
     "name": "Jakob",
     "email": "jakob.holzer03@gmail.com"
   },
   "license": "ISC",
   "homepage": "https://myfirstwebsite.lima-city.at",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
   "devDependencies": {
     "electron": "^34.3.0",
     "electron-builder": "^25.1.8"
@@ -22,6 +23,9 @@
     "appId": "com.meinefirma.meineapp3",
     "productName": "Meine App3",
     "copyright": "© 2025 Jakob",
+    "directories": {
+      "buildResources": "assets"
+    },
     "files": [
       "Photos/**/*",
       "startingpage.html",
