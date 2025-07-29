@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bilder von Holz</title>
+    <meta
+      name="description"
+      content="Eine einfache Galerie, wo Bilder angezeigt werden."
+    />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        text-align: center;
+      }
+      .gallery {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+      }
+      .gallery img {
+        max-width: 220px;
+        height: auto;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        transition: transform 0.2s, opacity 0.5s ease;
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      .gallery img.loaded {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .lightbox {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+      .lightbox img {
+        max-width: 90%;
+        max-height: 80%;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        transition: transform 0.2s ease;
+        cursor: grab;
+      }
+      .lightbox .nav {
+        position: absolute;
+        top: 50%;
+        font-size: 50px;
+        color: white;
+        cursor: pointer;
+        user-select: none;
+      }
+      .nav.prev {
+        left: 20px;
+      }
+      .nav.next {
+        right: 20px;
+      }
+      .lightbox .close {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 40px;
+        color: white;
+        cursor: pointer;
+        user-select: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Bilder von Holz</h1>
+    <button id="backBtn">Zurück</button>
+    <div class="gallery" id="gallery"></div>
+
+    <div class="lightbox" id="lightbox">
+      <span class="nav prev" id="prev">&lt;</span>
+      <img id="lightboxImg" src="" alt="Foto" />
+      <span class="nav next" id="next">&gt;</span>
+      <span class="close" id="close">&times;</span>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const gallery = document.getElementById("gallery");
+        const images = window.myAPI.getImageFiles();
+
+        images.forEach((src, index) => {
+          const img = document.createElement("img");
+          img.dataset.src = src;
+          img.alt = "Foto";
+          img.dataset.index = index;
+          gallery.appendChild(img);
+        });
+
+        // Lazy-Loading
+        const observer = new IntersectionObserver((entries, obs) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const img = entry.target;
+              img.src = img.dataset.src;
+              img.classList.add("loaded");
+              obs.unobserve(img);
+            }
+          });
+        });
+        document
+          .querySelectorAll("img[data-src]")
+          .forEach((img) => observer.observe(img));
+
+        // Lightbox-Logik (Zoom, Navigation, Close)
+        const lightbox = document.getElementById("lightbox");
+        const lightboxImg = document.getElementById("lightboxImg");
+        const closeBtn = document.getElementById("close");
+        const prevBtn = document.getElementById("prev");
+        const nextBtn = document.getElementById("next");
+        let currentIndex = 0;
+        let scale = 1,
+          translateX = 0,
+          translateY = 0;
+        let isDragging = false,
+          startX,
+          startY;
+
+        function showLightbox(idx) {
+          currentIndex = (idx + images.length) % images.length;
+          lightboxImg.src = document.querySelector(
+            `img[data-index="${currentIndex}"]`
+          ).src;
+          lightbox.style.display = "flex";
+        }
+        function closeLightbox() {
+          scale = 1;
+          translateX = 0;
+          translateY = 0;
+          lightboxImg.style.transform = "scale(1) translate(0,0)";
+          lightbox.style.display = "none";
+        }
+
+        gallery.querySelectorAll("img").forEach((img) => {
+          img.addEventListener("click", () =>
+            showLightbox(Number(img.dataset.index))
+          );
+        });
+        closeBtn.addEventListener("click", closeLightbox);
+        prevBtn.addEventListener("click", () => showLightbox(currentIndex - 1));
+        nextBtn.addEventListener("click", () => showLightbox(currentIndex + 1));
+        document.addEventListener("keydown", (e) => {
+          if (lightbox.style.display === "flex") {
+            if (e.key === "Escape") closeLightbox();
+            if (e.key === "ArrowLeft") showLightbox(currentIndex - 1);
+            if (e.key === "ArrowRight") showLightbox(currentIndex + 1);
+          }
+        });
+
+        // Zoom & Drag
+        lightboxImg.addEventListener("wheel", (e) => {
+          e.preventDefault();
+          scale = Math.min(Math.max(1, scale + (e.deltaY > 0 ? -0.1 : 0.1)), 5);
+          lightboxImg.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+        });
+        lightboxImg.addEventListener("mousedown", (e) => {
+          isDragging = true;
+          startX = e.clientX - translateX;
+          startY = e.clientY - translateY;
+          lightboxImg.style.cursor = "grabbing";
+        });
+        document.addEventListener("mousemove", (e) => {
+          if (isDragging) {
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            lightboxImg.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+          }
+        });
+        document.addEventListener("mouseup", () => {
+          isDragging = false;
+          lightboxImg.style.cursor = "grab";
+        });
+
+        // Zurück-Button
+        document
+          .getElementById("backBtn")
+          .addEventListener(
+            "click",
+            () => (window.location.href = "startingpage.html")
+          );
+      });
+    </script>
+  </body>
+</html>
